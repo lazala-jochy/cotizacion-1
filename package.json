@@ -1,0 +1,53 @@
+{
+  "name": "cotizador",
+  "version": "1.0.0",
+  "description": "App de escritorio para crear y gestionar cotizaciones",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "wait-on tcp:5173 && electron .",
+    "dev": "concurrently -k \"npm:dev:vite\" \"npm:dev:electron\"",
+    "build": "vite build",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "electron": "41.3.0",
+    "electron-builder": "^25.0.5",
+    "vite": "^5.4.6",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.cotizador.app",
+    "productName": "Cotizador",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.business"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "allowScripts": {
+    "electron@41.3.0": true,
+    "esbuild@0.21.5": true,
+    "fsevents@2.3.3": true
+  }
+}
