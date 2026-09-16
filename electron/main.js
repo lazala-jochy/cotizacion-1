@@ -37,6 +37,8 @@ function setupMenu() {
 }
 
 app.whenReady().then(() => {
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+
   registerPdfHandlers(ipcMain)
   registerFileHandlers(ipcMain)
   registerCredentialsHandlers(ipcMain)

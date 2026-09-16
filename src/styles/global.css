@@ -73,6 +73,13 @@ h1, h2, h3 {
   color: #ffffff;
 }
 
+.sidebar-version {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11px;
+  color: #565a80;
+}
+
 .sidebar-title {
   padding: 4px 12px 24px;
 }

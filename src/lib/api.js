@@ -142,6 +142,10 @@ export const api = {
     clear: () => window.api.credentials.clear()
   },
 
+  app: {
+    getVersion: () => window.api.app.getVersion()
+  },
+
   pdf: {
     export: (...args) => window.api.pdf.export(...args)
   }

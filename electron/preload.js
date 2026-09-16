@@ -16,5 +16,8 @@ contextBridge.exposeInMainWorld('api', {
     save: invoke('credentials:save'),
     load: invoke('credentials:load'),
     clear: invoke('credentials:clear')
+  },
+  app: {
+    getVersion: invoke('app:getVersion')
   }
 })

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { api } from '../lib/api.js'
 import { useSettings } from '../lib/SettingsContext.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { IconFileText, IconUsers, IconBox, IconSettings, IconLogOut } from './icons.jsx'
@@ -13,6 +15,11 @@ const links = [
 export default function Sidebar() {
   const { settings } = useSettings()
   const { signOut } = useAuth()
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    api.app.getVersion().then(setVersion)
+  }, [])
 
   return (
     <nav className="sidebar">
@@ -34,6 +41,7 @@ export default function Sidebar() {
         <IconLogOut size={16} />
         Cerrar sesión
       </button>
+      {version && <div className="sidebar-version">v{version}</div>}
     </nav>
   )
 }
