@@ -67,7 +67,8 @@ export const api = {
           p_tax_rate: payload.tax_rate,
           p_currency: payload.currency,
           p_notes: payload.notes,
-          p_items: payload.items
+          p_items: payload.items,
+          p_is_tax_exempt: payload.is_tax_exempt || false
         })
       ),
     update: (id, payload) =>
@@ -81,7 +82,8 @@ export const api = {
           p_tax_rate: payload.tax_rate,
           p_currency: payload.currency,
           p_notes: payload.notes,
-          p_items: payload.items
+          p_items: payload.items,
+          p_is_tax_exempt: payload.is_tax_exempt || false
         })
       ),
     duplicate: (id) => unwrap(supabase.rpc('duplicate_quote', { p_quote_id: id })),

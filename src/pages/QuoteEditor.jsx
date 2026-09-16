@@ -24,6 +24,7 @@ export default function QuoteEditor() {
   const [validUntil, setValidUntil] = useState('')
   const [status, setStatus] = useState('borrador')
   const [taxRate, setTaxRate] = useState(settings.tax_rate)
+  const [isTaxExempt, setIsTaxExempt] = useState(false)
   const [currency, setCurrency] = useState(settings.currency)
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState([emptyItem()])
@@ -45,6 +46,7 @@ export default function QuoteEditor() {
       setValidUntil(quote.valid_until || '')
       setStatus(quote.status)
       setTaxRate(quote.tax_rate)
+      setIsTaxExempt(Boolean(quote.is_tax_exempt))
       setCurrency(quote.currency)
       setNotes(quote.notes || '')
       setItems(quote.items.length ? quote.items : [emptyItem()])
@@ -53,9 +55,9 @@ export default function QuoteEditor() {
 
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0), 0)
-    const taxAmount = subtotal * ((Number(taxRate) || 0) / 100)
+    const taxAmount = isTaxExempt ? 0 : subtotal * ((Number(taxRate) || 0) / 100)
     return { subtotal, taxAmount, total: subtotal + taxAmount }
-  }, [items, taxRate])
+  }, [items, taxRate, isTaxExempt])
 
   const buildPayload = useCallback(
     () => ({
@@ -66,9 +68,10 @@ export default function QuoteEditor() {
       tax_rate: Number(taxRate) || 0,
       currency,
       notes,
-      items: items.filter((item) => item.description.trim() !== '')
+      items: items.filter((item) => item.description.trim() !== ''),
+      is_tax_exempt: isTaxExempt
     }),
-    [clientId, issueDate, validUntil, status, taxRate, currency, notes, items]
+    [clientId, issueDate, validUntil, status, taxRate, currency, notes, items, isTaxExempt]
   )
 
   async function handleSave() {
@@ -148,7 +151,18 @@ export default function QuoteEditor() {
         </label>
         <label>
           Tasa de impuesto (%)
-          <input type="number" min="0" step="0.01" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={taxRate}
+            onChange={(e) => setTaxRate(e.target.value)}
+            disabled={isTaxExempt}
+          />
+        </label>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={isTaxExempt} onChange={(e) => setIsTaxExempt(e.target.checked)} />
+          Cotización exenta de ITBIS
         </label>
       </div>
 
@@ -168,7 +182,7 @@ export default function QuoteEditor() {
           <span>{formatMoney(totals.subtotal, currency)}</span>
         </div>
         <div>
-          <span>Impuesto</span>
+          <span>Impuesto{isTaxExempt ? ' (exento)' : ''}</span>
           <span>{formatMoney(totals.taxAmount, currency)}</span>
         </div>
         <div className="total">

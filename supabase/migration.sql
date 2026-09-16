@@ -91,6 +91,17 @@ create table if not exists public.quotes (
 );
 create index if not exists quotes_org_id_idx on public.quotes(org_id);
 
+-- Una cotización puede estar exenta de ITBIS: el impuesto se calcula en 0
+-- sin importar la tasa configurada, y el PDF lo muestra como "Exento".
+alter table public.quotes add column if not exists is_tax_exempt boolean not null default false;
+
+-- Interruptor de activación por empresa (lo controla el operador de la app, no la
+-- propia empresa): si está en false, current_org_id() deja de reconocer a esa
+-- organización y por lo tanto el RLS le bloquea el acceso a clientes/productos/
+-- cotizaciones en todas las tablas de negocio. Nace en true para no afectar a
+-- las empresas existentes ni a los nuevos signups.
+alter table public.organizations add column if not exists active boolean not null default true;
+
 create table if not exists public.quote_items (
   id          uuid primary key default gen_random_uuid(),
   quote_id    uuid not null references public.quotes(id) on delete cascade,
@@ -113,7 +124,30 @@ alter table public.quotes   alter column org_id set default null;
 -- 2. FUNCIÓN HELPER (evita la recursión clásica de RLS sobre profiles)
 -- =========================================================
 
+-- Solo reconoce la organización si además está activa: si el operador desactiva
+-- una empresa (organizations.active = false), esta función pasa a devolver null
+-- para todos sus usuarios, y con eso el RLS de clients/products/quotes/quote_items
+-- (que filtra por org_id = current_org_id()) les bloquea todo el acceso.
 create or replace function public.current_org_id()
+returns uuid
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select p.org_id
+  from public.profiles p
+  join public.organizations o on o.id = p.org_id
+  where p.id = auth.uid() and o.active = true
+$$;
+
+revoke all on function public.current_org_id() from public;
+grant execute on function public.current_org_id() to authenticated;
+
+-- Versión "cruda" (sin filtrar por active) para que una empresa desactivada
+-- todavía pueda leer su propia fila de organizations y la app le muestre un
+-- aviso claro, en vez de que la consulta de configuración simplemente falle.
+create or replace function public.my_org_id()
 returns uuid
 language sql
 security definer
@@ -123,8 +157,8 @@ as $$
   select org_id from public.profiles where id = auth.uid()
 $$;
 
-revoke all on function public.current_org_id() from public;
-grant execute on function public.current_org_id() to authenticated;
+revoke all on function public.my_org_id() from public;
+grant execute on function public.my_org_id() to authenticated;
 
 -- Ahora que la función existe, sí podemos usarla como default de org_id
 alter table public.clients  alter column org_id set default public.current_org_id();
@@ -171,7 +205,7 @@ create policy profiles_update_own on public.profiles
 
 drop policy if exists org_select_own on public.organizations;
 create policy org_select_own on public.organizations
-  for select using (id = public.current_org_id());
+  for select using (id = public.my_org_id());
 
 drop policy if exists org_update_own on public.organizations;
 create policy org_update_own on public.organizations
@@ -342,15 +376,19 @@ revoke all on function public.complete_signup(text, text, text, text, text, text
 grant execute on function public.complete_signup(text, text, text, text, text, text) to authenticated;
 
 -- 5.2 Crear cotización: incrementa el folio (con lock de fila) y crea items, todo atómico.
+-- Cambió de firma (se agregó p_is_tax_exempt): hay que tumbar la versión anterior.
+drop function if exists public.create_quote(uuid, date, date, text, numeric, text, text, jsonb);
+
 create or replace function public.create_quote(
-  p_client_id   uuid,
-  p_issue_date  date,
-  p_valid_until date,
-  p_status      text,
-  p_tax_rate    numeric,
-  p_currency    text,
-  p_notes       text,
-  p_items       jsonb
+  p_client_id     uuid,
+  p_issue_date    date,
+  p_valid_until   date,
+  p_status        text,
+  p_tax_rate      numeric,
+  p_currency      text,
+  p_notes         text,
+  p_items         jsonb,
+  p_is_tax_exempt boolean default false
 )
 returns public.quotes
 language plpgsql
@@ -378,15 +416,15 @@ begin
     into v_subtotal
     from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) i;
 
-  v_tax_amount := v_subtotal * (coalesce(p_tax_rate, 0) / 100);
+  v_tax_amount := case when coalesce(p_is_tax_exempt, false) then 0 else v_subtotal * (coalesce(p_tax_rate, 0) / 100) end;
   v_total := v_subtotal + v_tax_amount;
 
   insert into public.quotes
     (org_id, folio, client_id, issue_date, valid_until, status,
-     subtotal, tax_rate, tax_amount, total, currency, notes)
+     subtotal, tax_rate, tax_amount, total, currency, notes, is_tax_exempt)
   values
     (v_org_id, v_folio, p_client_id, p_issue_date, p_valid_until, coalesce(p_status, 'borrador'),
-     v_subtotal, coalesce(p_tax_rate, 0), v_tax_amount, v_total, p_currency, p_notes)
+     v_subtotal, coalesce(p_tax_rate, 0), v_tax_amount, v_total, p_currency, p_notes, coalesce(p_is_tax_exempt, false))
   returning * into v_quote;
 
   insert into public.quote_items
@@ -404,20 +442,23 @@ begin
 end;
 $$;
 
-revoke all on function public.create_quote(uuid, date, date, text, numeric, text, text, jsonb) from public;
-grant execute on function public.create_quote(uuid, date, date, text, numeric, text, text, jsonb) to authenticated;
+revoke all on function public.create_quote(uuid, date, date, text, numeric, text, text, jsonb, boolean) from public;
+grant execute on function public.create_quote(uuid, date, date, text, numeric, text, text, jsonb, boolean) to authenticated;
 
 -- 5.3 Editar cotización: recalcula totales y reemplaza los items.
+drop function if exists public.update_quote(uuid, uuid, date, date, text, numeric, text, text, jsonb);
+
 create or replace function public.update_quote(
-  p_quote_id    uuid,
-  p_client_id   uuid,
-  p_issue_date  date,
-  p_valid_until date,
-  p_status      text,
-  p_tax_rate    numeric,
-  p_currency    text,
-  p_notes       text,
-  p_items       jsonb
+  p_quote_id      uuid,
+  p_client_id     uuid,
+  p_issue_date    date,
+  p_valid_until   date,
+  p_status        text,
+  p_tax_rate      numeric,
+  p_currency      text,
+  p_notes         text,
+  p_items         jsonb,
+  p_is_tax_exempt boolean default false
 )
 returns public.quotes
 language plpgsql
@@ -435,21 +476,22 @@ begin
     into v_subtotal
     from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) i;
 
-  v_tax_amount := v_subtotal * (coalesce(p_tax_rate, 0) / 100);
+  v_tax_amount := case when coalesce(p_is_tax_exempt, false) then 0 else v_subtotal * (coalesce(p_tax_rate, 0) / 100) end;
   v_total := v_subtotal + v_tax_amount;
 
   update public.quotes set
-    client_id   = p_client_id,
-    issue_date  = p_issue_date,
-    valid_until = p_valid_until,
-    status      = coalesce(p_status, status),
-    subtotal    = v_subtotal,
-    tax_rate    = coalesce(p_tax_rate, 0),
-    tax_amount  = v_tax_amount,
-    total       = v_total,
-    currency    = p_currency,
-    notes       = p_notes,
-    updated_at  = now()
+    client_id     = p_client_id,
+    issue_date    = p_issue_date,
+    valid_until   = p_valid_until,
+    status        = coalesce(p_status, status),
+    subtotal      = v_subtotal,
+    tax_rate      = coalesce(p_tax_rate, 0),
+    tax_amount    = v_tax_amount,
+    total         = v_total,
+    currency      = p_currency,
+    notes         = p_notes,
+    is_tax_exempt = coalesce(p_is_tax_exempt, false),
+    updated_at    = now()
   where id = p_quote_id and org_id = v_org_id
   returning * into v_quote;
 
@@ -474,10 +516,10 @@ begin
 end;
 $$;
 
-revoke all on function public.update_quote(uuid, uuid, date, date, text, numeric, text, text, jsonb) from public;
-grant execute on function public.update_quote(uuid, uuid, date, date, text, numeric, text, text, jsonb) to authenticated;
+revoke all on function public.update_quote(uuid, uuid, date, date, text, numeric, text, text, jsonb, boolean) from public;
+grant execute on function public.update_quote(uuid, uuid, date, date, text, numeric, text, text, jsonb, boolean) to authenticated;
 
--- 5.4 Duplicar cotización: nuevo folio, copia los items del original.
+-- 5.4 Duplicar cotización: nuevo folio, copia los items y la exención del original.
 create or replace function public.duplicate_quote(p_quote_id uuid)
 returns public.quotes
 language plpgsql
@@ -502,10 +544,11 @@ begin
 
   insert into public.quotes
     (org_id, folio, client_id, issue_date, valid_until, status,
-     subtotal, tax_rate, tax_amount, total, currency, notes)
+     subtotal, tax_rate, tax_amount, total, currency, notes, is_tax_exempt)
   values
     (v_org_id, v_folio, v_source.client_id, current_date, v_source.valid_until, 'borrador',
-     v_source.subtotal, v_source.tax_rate, v_source.tax_amount, v_source.total, v_source.currency, v_source.notes)
+     v_source.subtotal, v_source.tax_rate, v_source.tax_amount, v_source.total, v_source.currency, v_source.notes,
+     v_source.is_tax_exempt)
   returning * into v_quote;
 
   insert into public.quote_items (quote_id, org_id, product_id, description, quantity, unit_price, subtotal)

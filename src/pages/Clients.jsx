@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api.js'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import Pagination from '../components/Pagination.jsx'
 import { formatPhoneDO, formatTaxId } from '../lib/masks.js'
 import { IconPlus, IconPencil, IconTrash, IconInbox } from '../components/icons.jsx'
+
+const PAGE_SIZE = 10
 
 function emptyForm() {
   return { name: '', tax_id: '', email: '', phone: '', address: '', notes: '' }
@@ -13,6 +16,7 @@ export default function Clients() {
   const [search, setSearch] = useState('')
   const [form, setForm] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
+  const [page, setPage] = useState(1)
 
   async function load() {
     setClients(await api.clients.list(search))
@@ -21,6 +25,17 @@ export default function Clients() {
   useEffect(() => {
     load()
   }, [search])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search])
+
+  const totalPages = Math.max(1, Math.ceil(clients.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const pageClients = useMemo(
+    () => clients.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [clients, currentPage]
+  )
 
   function openNew() {
     setForm(emptyForm())
@@ -72,7 +87,7 @@ export default function Clients() {
           </tr>
         </thead>
         <tbody>
-          {clients.map((client) => (
+          {pageClients.map((client) => (
             <tr key={client.id}>
               <td>{client.name}</td>
               <td>{client.tax_id}</td>
@@ -98,6 +113,8 @@ export default function Clients() {
           )}
         </tbody>
       </table>
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
 
       {form && (
         <div className="modal-overlay">

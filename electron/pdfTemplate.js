@@ -107,7 +107,7 @@ function buildQuoteHtml({ quote, client, settings }) {
 
       <div class="totals">
         <div><span>Subtotal</span><span>${formatMoney(quote.subtotal, quote.currency)}</span></div>
-        <div><span>Impuesto (${quote.tax_rate}%)</span><span>${formatMoney(quote.tax_amount, quote.currency)}</span></div>
+        <div><span>Impuesto${quote.is_tax_exempt ? ' (exento de ITBIS)' : ` (${quote.tax_rate}%)`}</span><span>${formatMoney(quote.tax_amount, quote.currency)}</span></div>
         <div class="total"><span>Total</span><span>${formatMoney(quote.total, quote.currency)}</span></div>
       </div>
 

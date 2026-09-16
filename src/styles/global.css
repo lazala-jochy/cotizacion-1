@@ -168,6 +168,7 @@ h1, h2, h3 {
 
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -175,6 +176,19 @@ h1, h2, h3 {
 .filters input {
   flex: 1;
   max-width: 320px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.pagination-label {
+  font-size: 13px;
+  color: var(--color-muted);
 }
 
 input,
@@ -970,4 +984,69 @@ textarea:focus {
   gap: 6px;
   color: var(--color-primary);
   font-weight: 600;
+}
+
+/* Reports */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border-top: 3px solid var(--color-border);
+}
+
+.stat-card-label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.stat-card-count {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.stat-card-amount {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.stat-card-total {
+  border-top-color: var(--color-primary);
+}
+
+.stat-card-total .stat-card-count {
+  color: var(--color-primary);
+}
+
+.stat-card-borrador {
+  border-top-color: #9ca3af;
+}
+
+.stat-card-enviada {
+  border-top-color: #4338ca;
+}
+
+.stat-card-aprobada {
+  border-top-color: #15803d;
+}
+
+.stat-card-rechazada {
+  border-top-color: #b91c1c;
 }

@@ -3,12 +3,13 @@ import { NavLink } from 'react-router-dom'
 import { api } from '../lib/api.js'
 import { useSettings } from '../lib/SettingsContext.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
-import { IconFileText, IconUsers, IconBox, IconSettings, IconLogOut } from './icons.jsx'
+import { IconFileText, IconUsers, IconBox, IconBarChart, IconSettings, IconLogOut } from './icons.jsx'
 
 const links = [
   { to: '/', label: 'Cotizaciones', Icon: IconFileText, end: true },
   { to: '/clientes', label: 'Clientes', Icon: IconUsers },
   { to: '/productos', label: 'Productos', Icon: IconBox },
+  { to: '/reportes', label: 'Reportes', Icon: IconBarChart },
   { to: '/configuracion', label: 'Configuración', Icon: IconSettings }
 ]
 

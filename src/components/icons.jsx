@@ -151,6 +151,42 @@ export function IconSave(props) {
   )
 }
 
+export function IconBarChart(props) {
+  return (
+    <Icon {...props}>
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </Icon>
+  )
+}
+
+export function IconRefresh(props) {
+  return (
+    <Icon {...props}>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </Icon>
+  )
+}
+
+export function IconChevronLeft(props) {
+  return (
+    <Icon {...props}>
+      <polyline points="15 18 9 12 15 6" />
+    </Icon>
+  )
+}
+
+export function IconChevronRight(props) {
+  return (
+    <Icon {...props}>
+      <polyline points="9 18 15 12 9 6" />
+    </Icon>
+  )
+}
+
 export function IconLogOut(props) {
   return (
     <Icon {...props}>
