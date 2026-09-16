@@ -3,6 +3,7 @@ const path = require('path')
 const { registerPdfHandlers } = require('./ipc/pdf')
 const { registerFileHandlers } = require('./ipc/files')
 const { registerCredentialsHandlers } = require('./ipc/credentials')
+const { initAutoUpdater } = require('./updater')
 
 let mainWindow
 
@@ -42,6 +43,7 @@ app.whenReady().then(() => {
 
   setupMenu()
   createWindow()
+  initAutoUpdater(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

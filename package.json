@@ -10,10 +10,12 @@
     "dev": "concurrently -k \"npm:dev:vite\" \"npm:dev:electron\"",
     "build": "vite build",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win",
+    "release": "npm run build && dotenv -e .env -- electron-builder --mac --win --publish always"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
+    "electron-updater": "^6.8.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2"
@@ -21,6 +23,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^9.0.1",
+    "dotenv-cli": "^11.0.0",
     "electron": "41.3.0",
     "electron-builder": "^25.0.5",
     "vite": "^5.4.6",
@@ -37,6 +40,12 @@
       "electron/**/*",
       "package.json"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "lazala-jochy",
+      "repo": "cotizacion-1",
+      "releaseType": "release"
+    },
     "mac": {
       "target": "dmg",
       "category": "public.app-category.business"
